@@ -40,6 +40,8 @@ public class CodeBuilderLauncher extends JNLPLauncher {
    * Constructor for CodeBuilderLauncher.
    *
    * @param cloud a {@link CodeBuilderCloud} object.
+   * @param tunnel tunnel URL if configured {@link String}
+   * @param vmargs a {@link String}
    */
   public CodeBuilderLauncher(CodeBuilderCloud cloud, String tunnel, String vmargs) {
     super(tunnel, vmargs);
