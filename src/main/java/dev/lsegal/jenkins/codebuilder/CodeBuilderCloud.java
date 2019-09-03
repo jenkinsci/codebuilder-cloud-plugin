@@ -42,6 +42,7 @@ import hudson.model.labels.LabelAtom;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
 import hudson.slaves.NodeProvisioner.PlannedNode;
+
 import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import jenkins.model.JenkinsLocationConfiguration;
@@ -79,6 +80,10 @@ public class CodeBuilderCloud extends Cloud {
   private String jenkinsUrl;
   private String jnlpImage;
   private String jnlpCommand;
+
+  @CheckForNull
+  private String tunnel;
+
   private int agentTimeout;
 
   private transient AWSCodeBuild client;
@@ -187,6 +192,8 @@ public class CodeBuilderCloud extends Cloud {
     this.label = label;
   }
 
+
+
   /**
    * Getter for the field <code>jenkinsUrl</code>.
    *
@@ -258,6 +265,15 @@ public class CodeBuilderCloud extends Cloud {
   @DataBoundSetter
   public void setJnlpImage(String jnlpImage) {
     this.jnlpImage = jnlpImage;
+  }
+
+  public String getTunnel() {
+    return tunnel;
+  }
+
+  @DataBoundSetter
+  public void setTunnel(String tunnel) {
+    this.tunnel = tunnel;
   }
 
   /**
@@ -375,7 +391,7 @@ public class CodeBuilderCloud extends Cloud {
       final String displayName = String.format("%s.cb-%s", projectName, suffix);
       final CodeBuilderCloud cloud = this;
       final Future<Node> nodeResolver = Computer.threadPoolForRemoting.submit(() -> {
-        CodeBuilderLauncher launcher = new CodeBuilderLauncher(cloud);
+        CodeBuilderLauncher launcher = new CodeBuilderLauncher(cloud, tunnel, null);
         CodeBuilderAgent agent = new CodeBuilderAgent(cloud, displayName, launcher);
         jenkins().addNode(agent);
         return agent;
@@ -411,6 +427,8 @@ public class CodeBuilderCloud extends Cloud {
       return null;
     }
   }
+
+
 
   @Extension
   public static class DescriptorImpl extends Descriptor<Cloud> {
