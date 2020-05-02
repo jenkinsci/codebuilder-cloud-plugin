@@ -8,6 +8,8 @@ import javax.annotation.Nonnull;
 import com.amazonaws.services.codebuild.model.SourceType;
 import com.amazonaws.services.codebuild.model.StartBuildRequest;
 import com.amazonaws.services.codebuild.model.StartBuildResult;
+import com.amazonaws.services.codebuild.model.BatchGetProjectsRequest;
+import com.amazonaws.services.codebuild.model.BatchGetProjectsResult;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,8 +66,13 @@ public class CodeBuilderLauncher extends JNLPLauncher {
 
     LOGGER.info("[CodeBuilder]: Launching {} with {}", computer, listener);
     CodeBuilderComputer cbcpu = (CodeBuilderComputer) computer;
+
+    BatchGetProjectsResult projects = cloud.getClient().batchGetProjects(
+        new BatchGetProjectsRequest().withNames(cloud.getProjectName())
+    );
+    String existingBuildSpec = projects.getProjects().get(0).getSource().getBuildspec();
     StartBuildRequest req = new StartBuildRequest().withProjectName(cloud.getProjectName())
-        .withSourceTypeOverride(SourceType.NO_SOURCE).withBuildspecOverride(buildspec(computer))
+        .withSourceTypeOverride(SourceType.NO_SOURCE).withBuildspecOverride(buildspec(existingBuildSpec, computer))
         .withImageOverride(cloud.getJnlpImage()).withPrivilegedModeOverride(true)
         .withComputeTypeOverride(cloud.getComputeType());
 
@@ -108,23 +115,18 @@ public class CodeBuilderLauncher extends JNLPLauncher {
     }
   }
 
-  private String buildspec(@Nonnull SlaveComputer computer) {
+  private String buildspec(String existingBuildSpec, @Nonnull SlaveComputer computer) {
     Node n = computer.getNode();
     if (n == null) {
       return "";
     }
-    String cmd = String.format("jenkins-agent -noreconnect -workDir \"$CODEBUILD_SRC_DIR\" -url \"%s\" \"%s\" \"%s\"",
-        cloud.getJenkinsUrl(), computer.getJnlpMac(), n.getDisplayName());
-    StringBuilder builder = new StringBuilder();
-    builder.append("version: 0.2\n");
-    builder.append("phases:\n");
-    builder.append("  pre_build:\n");
-    builder.append("    commands:\n");
-    builder.append("      - which dockerd-entrypoint.sh >/dev/null && dockerd-entrypoint.sh || exit 0\n");
-    builder.append("  build:\n");
-    builder.append("    commands:\n");
-    builder.append("      - " + cmd + " || exit 0\n");
 
-    return builder.toString();
+    // Reformat the buildspec with the variables:
+    // {{CODEBUILD_JENKINS_URL}}, {{CODEBUILD_COMPUTER_JNLP_MAC}} and {{CODEBUILD_NODE_DISPLAY_NAME}}
+    String newBuildSpec = existingBuildSpec
+        .replace("{{CODEBUILD_JENKINS_URL}}", cloud.getJenkinsUrl())
+        .replace("{{CODEBUILD_COMPUTER_JNLP_MAC}}", computer.getJnlpMac())
+        .replace("{{CODEBUILD_NODE_DISPLAY_NAME}}", n.getDisplayName());
+    return newBuildSpec;
   }
 }

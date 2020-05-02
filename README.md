@@ -27,7 +27,29 @@ Because permission management can be difficult, this plugin assumes you have
 created an AWS CodeBuild project with the necessary IAM roles for the job
 types that you will be running. The project can have any configuration; all
 settings will be overridden by the plugin to provide a build using source
-provided by the Jenkins host.
+provided by the Jenkins host. However, it does expect you to have your own
+custom `buildspec.yaml` file when creating the project. At runtime on building
+your project, the plugin will override the buildspec and replace the following
+variables that it expects to connect with the codebuilder jenkins slaves to build
+the project. These variables are:
+
+- `{CODEBUILD_JENKINS_URL}}`
+- `{{CODEBUILD_COMPUTER_JNLP_MAC}}`
+- `{{CODEBUILD_NODE_DISPLAY_NAME}}`
+
+ A sample buildspec might look like the following:
+
+```yaml
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - which dockerd-entrypoint.sh >/dev/null && dockerd-entrypoint.sh || exit 0
+  build:
+    commands:
+      - jenkins-agent -noreconnect -workDir "$CODEBUILD_SRC_DIR" -url "{{CODEBUILD_JENKINS_URL}}" "{{CODEBUILD_COMPUTER_JNLP_MAC}}" "{{CODEBUILD_NODE_DISPLAY_NAME}}"
+      - exit 0
+```
 
 Once a project is created, you can configure the cloud in Jenkins by adding
 a new cloud and configuring the plugin in `Manage Jenkins > Configure System`.
@@ -56,8 +78,11 @@ aws codebuild create-project \
   --service-role jenkins-default \
   --artifacts type=NO_ARTIFACTS \
   --environment type=LINUX_CONTAINER,image=aws/codebuild/docker:18.09.0,computeType=BUILD_GENERAL1_SMALL \
-  --source $'type=NO_SOURCE,buildspec=version:0.2\nphases:\n  build:\n    commands:\n      - exit 1'
+  --source $'type=NO_SOURCE,buildspec=version: 0.2\nphases:\n  pre_build:\n    commands:\n      - which dockerd-entrypoint.sh >/dev/null && dockerd-entrypoint.sh || exit 0\n  build:\n    commands:\n      - jenkins-agent -noreconnect -workDir "$CODEBUILD_SRC_DIR" -url "{{CODEBUILD_JENKINS_URL}}" "{{CODEBUILD_COMPUTER_JNLP_MAC}}" "{{CODEBUILD_NODE_DISPLAY_NAME}}"\n      - exit 0\n'
 ```
+
+
+
 
 #### Configuring the Plugin
 
