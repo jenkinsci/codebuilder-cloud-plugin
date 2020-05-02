@@ -60,6 +60,7 @@ public class CodeBuilderCloud extends Cloud {
   private static final String DEFAULT_JNLP_COMMAND = "jenkins-agent";
   private static final int DEFAULT_AGENT_TIMEOUT = 120;
   private static final String DEFAULT_COMPUTE_TYPE = "BUILD_GENERAL1_SMALL";
+  private static final boolean DEFAULT_TERMINATE_AGENT = true;
 
   static {
     clearAllNodes();
@@ -80,6 +81,7 @@ public class CodeBuilderCloud extends Cloud {
   private String jnlpImage;
   private String jnlpCommand;
   private int agentTimeout;
+  private boolean terminateAgent;
 
   private transient AWSCodeBuild client;
 
@@ -350,7 +352,8 @@ public class CodeBuilderCloud extends Cloud {
   @Override
   public synchronized Collection<PlannedNode> provision(Label label, int excessWorkload) {
     List<NodeProvisioner.PlannedNode> list = new ArrayList<NodeProvisioner.PlannedNode>();
-
+    String labelName = label == null ? getLabel() : label.getDisplayName();
+    LOGGER.info("[CodeBuilder]: Excess workload sent by Jenkins: {} for label: {}", excessWorkload, labelName);
     // guard against non-matching labels
     if (label != null && !label.matches(Arrays.asList(new LabelAtom(getLabel())))) {
       return list;
@@ -364,7 +367,6 @@ public class CodeBuilderCloud extends Cloud {
       return list;
     }
 
-    String labelName = label == null ? getLabel() : label.getDisplayName();
     long stillProvisioning = numStillProvisioning();
     long numToLaunch = Math.max(excessWorkload - stillProvisioning, 0);
     LOGGER.info("[CodeBuilder]: Provisioning {} nodes for label '{}' ({} already provisioning)", numToLaunch, labelName,
@@ -393,14 +395,20 @@ public class CodeBuilderCloud extends Cloud {
    */
   private long numStillProvisioning() {
     return jenkins().getNodes().stream().filter(CodeBuilderAgent.class::isInstance).map(CodeBuilderAgent.class::cast)
-        .filter(a -> a.getLauncher().isLaunchSupported()).count();
+        .filter(a -> !a.getLauncher().isLaunchSupported()).count();
   }
 
   /** {@inheritDoc} */
   @Override
   public boolean canProvision(Label label) {
+    LOGGER.info("[CodeBuilder]: Check if can provision node for label '{}'", label);
     boolean canProvision = label == null ? true : label.matches(Arrays.asList(new LabelAtom(getLabel())));
-    LOGGER.info("[CodeBuilder]: Check provisioning capabilities for label '{}': {}", label, canProvision);
+    if (canProvision) {
+      LOGGER.info("[CodeBuilder]: Label '{}' matches current label '{}'. Node will be provisioned...", label, getLabel());
+    }
+    else {
+      LOGGER.info("[CodeBuilder]: Label '{}' DOESN'T MATCH current label '{}'. Node WON'T provisioned...", label, getLabel());
+    }
     return canProvision;
   }
 
@@ -412,6 +420,14 @@ public class CodeBuilderCloud extends Cloud {
     }
   }
 
+  public boolean isTerminateAgent() {
+    return terminateAgent;
+  }
+  
+  public void setTerminateAgent(boolean terminateAgent) {
+    this.terminateAgent = terminateAgent;
+  }
+    
   @Extension
   public static class DescriptorImpl extends Descriptor<Cloud> {
     @Override
@@ -433,6 +449,10 @@ public class CodeBuilderCloud extends Cloud {
 
     public String getDefaultComputeType() {
       return DEFAULT_COMPUTE_TYPE;
+    }
+
+    public boolean getDefaultTerminateAgent() {
+    	return DEFAULT_TERMINATE_AGENT;
     }
 
     public ListBoxModel doFillCredentialsIdItems() {

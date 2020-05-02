@@ -41,5 +41,9 @@
     <f:entry field="agentTimeout" title="${%Agent Connection Timeout}">
       <f:number default="${descriptor.defaultAgentTimeout}" />
     </f:entry>
+
+    <f:entry field="terminateAgent" title="${%Terminate Agent After Task completion}">
+      <f:checkbox default="${descriptor.defaultTerminateAgent}"/>
+    </f:entry>
   </f:advanced>
 </j:jelly>

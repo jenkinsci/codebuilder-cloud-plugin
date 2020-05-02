@@ -13,7 +13,7 @@ public class CodeBuilderCloudTest {
 
   @Test
   public void initializes_correctly() throws InterruptedException {
-    CodeBuilderCloud cloud = new CodeBuilderCloud(null, "project", null, null);
+    CodeBuilderCloud cloud = new CodeBuilderCloud(null, "project", null, "eu-west-1");
     assertEquals("project", cloud.getProjectName());
     assertEquals("codebuilder_0", cloud.getDisplayName());
     assertNotNull(cloud.getClient());

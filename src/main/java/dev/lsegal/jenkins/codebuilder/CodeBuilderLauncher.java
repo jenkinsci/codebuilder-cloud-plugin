@@ -66,7 +66,7 @@ public class CodeBuilderLauncher extends JNLPLauncher {
     CodeBuilderComputer cbcpu = (CodeBuilderComputer) computer;
     StartBuildRequest req = new StartBuildRequest().withProjectName(cloud.getProjectName())
         .withSourceTypeOverride(SourceType.NO_SOURCE).withBuildspecOverride(buildspec(computer))
-        .withImageOverride(cloud.getJnlpImage()).withPrivilegedModeOverride(true)
+        .withImageOverride(cloud.getJnlpImage()).withPrivilegedModeOverride(true).withTimeoutInMinutesOverride(480)
         .withComputeTypeOverride(cloud.getComputeType());
 
     try {

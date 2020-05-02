@@ -77,7 +77,9 @@ public class CodeBuilderComputer extends AbstractCloudComputer<CodeBuilderAgent>
   public void taskCompleted(Executor executor, Queue.Task task, long durationMS) {
     super.taskCompleted(executor, task, durationMS);
     LOGGER.info("[CodeBuilder]: [{}]: Task in job '{}' completed in {}ms", this, task.getFullDisplayName(), durationMS);
-    gracefulShutdown();
+    if (cloud.isTerminateAgent()) {
+    	gracefulShutdown();
+    }
   }
 
   /** {@inheritDoc} */
@@ -86,7 +88,9 @@ public class CodeBuilderComputer extends AbstractCloudComputer<CodeBuilderAgent>
     super.taskCompletedWithProblems(executor, task, durationMS, problems);
     LOGGER.error("[CodeBuilder]: [{}]: Task in job '{}' completed with problems in {}ms", this,
         task.getFullDisplayName(), durationMS, problems);
-    gracefulShutdown();
+    if (cloud.isTerminateAgent()) {
+      gracefulShutdown();
+    }
   }
 
   /** {@inheritDoc} */
