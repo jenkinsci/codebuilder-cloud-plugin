@@ -26,6 +26,10 @@
   </f:entry>
 
   <f:advanced>
+    <f:entry field="tunnel" title="${%Tunnel URL}">
+      <f:textbox />
+    </f:entry>
+
     <f:entry field="jenkinsUrl" title="${%Alternative Jenkins URL}">
       <f:textbox />
     </f:entry>
