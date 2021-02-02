@@ -24,6 +24,10 @@ import com.amazonaws.services.codebuild.model.ListProjectsResult;
 import com.cloudbees.jenkins.plugins.awscredentials.AWSCredentialsHelper;
 import com.cloudbees.jenkins.plugins.awscredentials.AmazonWebServicesCredentials;
 
+import com.cloudbees.plugins.credentials.CredentialsMatchers;
+import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
+import hudson.Util;
+import hudson.security.ACL;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -70,7 +74,7 @@ public class CodeBuilderCloud extends Cloud {
   private final String projectName;
 
   @Nonnull
-  private final String credentialsId;
+  private String credentialsId;
 
   @Nonnull
   private final String region;
@@ -122,7 +126,7 @@ public class CodeBuilderCloud extends Cloud {
    */
   @Nonnull
   protected static Jenkins jenkins() {
-    return Jenkins.getActiveInstance();
+    return Jenkins.get();
   }
 
   /**
@@ -192,7 +196,14 @@ public class CodeBuilderCloud extends Cloud {
     this.label = label;
   }
 
+  public String getCredentialsId() {
+    return this.credentialsId;
+  }
 
+  @DataBoundSetter
+  public void setCredentialsId(String credentialsId) {
+    this.credentialsId = Util.fixEmpty(credentialsId);
+  }
 
   /**
    * Getter for the field <code>jenkinsUrl</code>.
@@ -453,8 +464,18 @@ public class CodeBuilderCloud extends Cloud {
       return DEFAULT_COMPUTE_TYPE;
     }
 
-    public ListBoxModel doFillCredentialsIdItems() {
-      return AWSCredentialsHelper.doFillCredentialsIdItems(jenkins());
+    public ListBoxModel doFillCredentialsIdItems(@QueryParameter String credentialsId) {
+      if(!jenkins().hasPermission(Jenkins.ADMINISTER)) {
+          return new StandardListBoxModel().includeCurrentValue(credentialsId);
+      }
+      return new StandardListBoxModel().includeEmptyValue()
+              .includeMatchingAs(
+                      ACL.SYSTEM,
+                      jenkins(),
+                      AmazonWebServicesCredentials.class,
+                      Collections.emptyList(),
+                      CredentialsMatchers.always()
+              );
     }
 
     public ListBoxModel doFillRegionItems() {

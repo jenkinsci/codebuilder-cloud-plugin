@@ -4,20 +4,20 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>3.43</version>
+        <version>4.15</version>
         <relativePath />
     </parent>
 
     <groupId>dev.lsegal.jenkins</groupId>
     <artifactId>codebuilder-cloud</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.4-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>CodeBuilder: AWS CodeBuild Cloud Agents</name>
     <description>Dynamically provisions cloud agents using AWS CodeBuild</description>
     <url>https://wiki.jenkins.io/display/JENKINS/CodeBuilder%3A+AWS+CodeBuild+Cloud+Agents+Plugin</url>
 
     <properties>
-        <jenkins.version>1.651.3</jenkins.version>
+        <jenkins.version>2.270</jenkins.version>
         <java.level>8</java.level>
     </properties>
 
