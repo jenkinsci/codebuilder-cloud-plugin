@@ -1,11 +1,8 @@
 package dev.lsegal.jenkins.codebuilder;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.io.InputStream;
+import java.util.*;
 import java.util.concurrent.Future;
 
 import javax.annotation.CheckForNull;
@@ -65,10 +62,11 @@ public class CodeBuilderCloud extends Cloud {
   private static final String DEFAULT_JNLP_COMMAND = "jenkins-agent";
   private static final int DEFAULT_AGENT_TIMEOUT = 120;
   private static final String DEFAULT_COMPUTE_TYPE = "BUILD_GENERAL1_SMALL";
-
+  private static final String POM_PROPERTIES = "/META-INF/maven/dev.lsegal.jenkins/codebuilder-cloud/pom.properties";
   static {
     clearAllNodes();
   }
+
 
   @Nonnull
   private final String projectName;
@@ -89,6 +87,9 @@ public class CodeBuilderCloud extends Cloud {
   private String tunnel;
 
   private int agentTimeout;
+
+  @Nonnull
+  private boolean webSocket;
 
   private transient AWSCodeBuild client;
 
@@ -203,6 +204,15 @@ public class CodeBuilderCloud extends Cloud {
   @DataBoundSetter
   public void setCredentialsId(String credentialsId) {
     this.credentialsId = Util.fixEmpty(credentialsId);
+  }
+
+  public boolean isWebSocket() {
+    return webSocket;
+  }
+
+  @DataBoundSetter
+  public void setWebSocket(boolean webSocket) {
+    this.webSocket = webSocket;
   }
 
   /**
@@ -333,8 +343,15 @@ public class CodeBuilderCloud extends Cloud {
   }
 
   private static AWSCodeBuild buildClient(String credentialsId, String region) {
+      String projectVersion = "";
+      Properties properties = new Properties();
+      try(InputStream stream = CodeBuilderCloud.class.getResourceAsStream(POM_PROPERTIES)) {
+          properties.load(stream);
+          projectVersion =  "/" + properties.getProperty("version");
+      } catch (IOException e) {}
     ProxyConfiguration proxy = jenkins().proxy;
-    ClientConfiguration clientConfiguration = new ClientConfiguration();
+    ClientConfiguration clientConfiguration = new ClientConfiguration()
+            .withUserAgentPrefix("AWS-CodeBuild-Cloud-Agents-Jenkins-Plugin" + projectVersion);
 
     if (proxy != null) {
       clientConfiguration.setProxyHost(proxy.name);

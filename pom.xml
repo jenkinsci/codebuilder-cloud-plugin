@@ -10,7 +10,7 @@
 
     <groupId>dev.lsegal.jenkins</groupId>
     <artifactId>codebuilder-cloud</artifactId>
-    <version>1.0.4-SNAPSHOT</version>
+    <version>1.0.6-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>CodeBuilder: AWS CodeBuild Cloud Agents</name>
     <description>Dynamically provisions cloud agents using AWS CodeBuild</description>

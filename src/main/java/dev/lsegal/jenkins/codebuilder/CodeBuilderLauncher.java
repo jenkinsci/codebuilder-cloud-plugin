@@ -12,7 +12,6 @@ import com.amazonaws.services.codebuild.model.SourceType;
 import com.amazonaws.services.codebuild.model.StartBuildRequest;
 import com.amazonaws.services.codebuild.model.StartBuildResult;
 
-import com.iwombat.util.StringUtil;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +45,7 @@ public class CodeBuilderLauncher extends JNLPLauncher {
   public CodeBuilderLauncher(CodeBuilderCloud cloud, String tunnel, String vmargs) {
     super(tunnel, vmargs);
     this.cloud = cloud;
+    this.setWebSocket(this.cloud.isWebSocket());
   }
 
   /** {@inheritDoc} */
@@ -131,6 +131,11 @@ public class CodeBuilderLauncher extends JNLPLauncher {
             String.format("\"%s\"", computer.getJnlpMac()),
             String.format("\"%s\"", n.getDisplayName())
     ));
+
+    if (isWebSocket()) {
+      command.add("-webSocket");
+    }
+
     if (StringUtils.isNotBlank(tunnel)) {
       command.add("-tunnel");
       command.add(cloud.getTunnel());
