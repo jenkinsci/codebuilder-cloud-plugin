@@ -1,6 +1,9 @@
 package dev.lsegal.jenkins.codebuilder;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.concurrent.TimeoutException;
 
 import javax.annotation.Nonnull;
@@ -9,6 +12,7 @@ import com.amazonaws.services.codebuild.model.SourceType;
 import com.amazonaws.services.codebuild.model.StartBuildRequest;
 import com.amazonaws.services.codebuild.model.StartBuildResult;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +21,7 @@ import hudson.model.TaskListener;
 import hudson.slaves.JNLPLauncher;
 import hudson.slaves.SlaveComputer;
 import hudson.util.StreamTaskListener;
+
 
 /**
  * CodeBuilderLauncher class.
@@ -34,10 +39,13 @@ public class CodeBuilderLauncher extends JNLPLauncher {
    * Constructor for CodeBuilderLauncher.
    *
    * @param cloud a {@link CodeBuilderCloud} object.
+   * @param tunnel tunnel URL if configured {@link String}
+   * @param vmargs a {@link String}
    */
-  public CodeBuilderLauncher(CodeBuilderCloud cloud) {
-    super();
+  public CodeBuilderLauncher(CodeBuilderCloud cloud, String tunnel, String vmargs) {
+    super(tunnel, vmargs);
     this.cloud = cloud;
+    this.setWebSocket(this.cloud.isWebSocket());
   }
 
   /** {@inheritDoc} */
@@ -113,8 +121,26 @@ public class CodeBuilderLauncher extends JNLPLauncher {
     if (n == null) {
       return "";
     }
-    String cmd = String.format("%s -noreconnect -workDir \"$CODEBUILD_SRC_DIR\" -url \"%s\" \"%s\" \"%s\"",
-        cloud.getJnlpCommand(), cloud.getJenkinsUrl(), computer.getJnlpMac(), n.getDisplayName());
+    Collection<String> command = new ArrayList<String>(Arrays.asList(
+            "jenkins-agent",
+            "-noreconnect",
+            "-workDir",
+            "\"$CODEBUILD_SRC_DIR\"",
+            "-url",
+            String.format("\"%s\"", cloud.getJenkinsUrl()),
+            String.format("\"%s\"", computer.getJnlpMac()),
+            String.format("\"%s\"", n.getDisplayName())
+    ));
+
+    if (isWebSocket()) {
+      command.add("-webSocket");
+    }
+
+    if (StringUtils.isNotBlank(tunnel)) {
+      command.add("-tunnel");
+      command.add(cloud.getTunnel());
+    }
+    String cmd = String.join(" ", command);
     StringBuilder builder = new StringBuilder();
     builder.append("version: 0.2\n");
     builder.append("phases:\n");

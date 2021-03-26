@@ -1,11 +1,8 @@
 package dev.lsegal.jenkins.codebuilder;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.io.InputStream;
+import java.util.*;
 import java.util.concurrent.Future;
 
 import javax.annotation.CheckForNull;
@@ -24,6 +21,10 @@ import com.amazonaws.services.codebuild.model.ListProjectsResult;
 import com.cloudbees.jenkins.plugins.awscredentials.AWSCredentialsHelper;
 import com.cloudbees.jenkins.plugins.awscredentials.AmazonWebServicesCredentials;
 
+import com.cloudbees.plugins.credentials.CredentialsMatchers;
+import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
+import hudson.Util;
+import hudson.security.ACL;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -42,6 +43,7 @@ import hudson.model.labels.LabelAtom;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
 import hudson.slaves.NodeProvisioner.PlannedNode;
+
 import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import jenkins.model.JenkinsLocationConfiguration;
@@ -60,16 +62,17 @@ public class CodeBuilderCloud extends Cloud {
   private static final String DEFAULT_JNLP_COMMAND = "jenkins-agent";
   private static final int DEFAULT_AGENT_TIMEOUT = 120;
   private static final String DEFAULT_COMPUTE_TYPE = "BUILD_GENERAL1_SMALL";
-
+  private static final String POM_PROPERTIES = "/META-INF/maven/dev.lsegal.jenkins/codebuilder-cloud/pom.properties";
   static {
     clearAllNodes();
   }
+
 
   @Nonnull
   private final String projectName;
 
   @Nonnull
-  private final String credentialsId;
+  private String credentialsId;
 
   @Nonnull
   private final String region;
@@ -79,7 +82,14 @@ public class CodeBuilderCloud extends Cloud {
   private String jenkinsUrl;
   private String jnlpImage;
   private String jnlpCommand;
+
+  @CheckForNull
+  private String tunnel;
+
   private int agentTimeout;
+
+  @Nonnull
+  private boolean webSocket;
 
   private transient AWSCodeBuild client;
 
@@ -117,7 +127,7 @@ public class CodeBuilderCloud extends Cloud {
    */
   @Nonnull
   protected static Jenkins jenkins() {
-    return Jenkins.getActiveInstance();
+    return Jenkins.get();
   }
 
   /**
@@ -185,6 +195,24 @@ public class CodeBuilderCloud extends Cloud {
   @DataBoundSetter
   public void setLabel(String label) {
     this.label = label;
+  }
+
+  public String getCredentialsId() {
+    return this.credentialsId;
+  }
+
+  @DataBoundSetter
+  public void setCredentialsId(String credentialsId) {
+    this.credentialsId = Util.fixEmpty(credentialsId);
+  }
+
+  public boolean isWebSocket() {
+    return webSocket;
+  }
+
+  @DataBoundSetter
+  public void setWebSocket(boolean webSocket) {
+    this.webSocket = webSocket;
   }
 
   /**
@@ -260,6 +288,15 @@ public class CodeBuilderCloud extends Cloud {
     this.jnlpImage = jnlpImage;
   }
 
+  public String getTunnel() {
+    return tunnel;
+  }
+
+  @DataBoundSetter
+  public void setTunnel(String tunnel) {
+    this.tunnel = tunnel;
+  }
+
   /**
    * Getter for the field <code>agentTimeout</code>.
    *
@@ -306,8 +343,15 @@ public class CodeBuilderCloud extends Cloud {
   }
 
   private static AWSCodeBuild buildClient(String credentialsId, String region) {
+      String projectVersion = "";
+      Properties properties = new Properties();
+      try(InputStream stream = CodeBuilderCloud.class.getResourceAsStream(POM_PROPERTIES)) {
+          properties.load(stream);
+          projectVersion =  "/" + properties.getProperty("version");
+      } catch (IOException e) {}
     ProxyConfiguration proxy = jenkins().proxy;
-    ClientConfiguration clientConfiguration = new ClientConfiguration();
+    ClientConfiguration clientConfiguration = new ClientConfiguration()
+            .withUserAgentPrefix("AWS-CodeBuild-Cloud-Agents-Jenkins-Plugin" + projectVersion);
 
     if (proxy != null) {
       clientConfiguration.setProxyHost(proxy.name);
@@ -375,7 +419,7 @@ public class CodeBuilderCloud extends Cloud {
       final String displayName = String.format("%s.cb-%s", projectName, suffix);
       final CodeBuilderCloud cloud = this;
       final Future<Node> nodeResolver = Computer.threadPoolForRemoting.submit(() -> {
-        CodeBuilderLauncher launcher = new CodeBuilderLauncher(cloud);
+        CodeBuilderLauncher launcher = new CodeBuilderLauncher(cloud, tunnel, null);
         CodeBuilderAgent agent = new CodeBuilderAgent(cloud, displayName, launcher);
         jenkins().addNode(agent);
         return agent;
@@ -412,6 +456,8 @@ public class CodeBuilderCloud extends Cloud {
     }
   }
 
+
+
   @Extension
   public static class DescriptorImpl extends Descriptor<Cloud> {
     @Override
@@ -435,8 +481,18 @@ public class CodeBuilderCloud extends Cloud {
       return DEFAULT_COMPUTE_TYPE;
     }
 
-    public ListBoxModel doFillCredentialsIdItems() {
-      return AWSCredentialsHelper.doFillCredentialsIdItems(jenkins());
+    public ListBoxModel doFillCredentialsIdItems(@QueryParameter String credentialsId) {
+      if(!jenkins().hasPermission(Jenkins.ADMINISTER)) {
+          return new StandardListBoxModel().includeCurrentValue(credentialsId);
+      }
+      return new StandardListBoxModel().includeEmptyValue()
+              .includeMatchingAs(
+                      ACL.SYSTEM,
+                      jenkins(),
+                      AmazonWebServicesCredentials.class,
+                      Collections.emptyList(),
+                      CredentialsMatchers.always()
+              );
     }
 
     public ListBoxModel doFillRegionItems() {
