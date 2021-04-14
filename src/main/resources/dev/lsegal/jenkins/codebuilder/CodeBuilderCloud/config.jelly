@@ -22,6 +22,7 @@
       <option selected="${instance.computeType.equals('BUILD_GENERAL1_SMALL')? 'true':null}" value="BUILD_GENERAL1_SMALL">Small (2 vCPUs, 3GB RAM, 64GB Disk)</option>
       <option selected="${instance.computeType.equals('BUILD_GENERAL1_MEDIUM')? 'true':null}" value="BUILD_GENERAL1_MEDIUM">Medium (4 vCPUs, 7GB RAM, 128GB Disk)</option>
       <option selected="${instance.computeType.equals('BUILD_GENERAL1_LARGE')? 'true':null}" value="BUILD_GENERAL1_LARGE">Large (8 vCPUs, 15GB RAM, 128GB Disk)</option>
+      <option selected="${instance.computeType.equals('BUILD_GENERAL1_2XLARGE')? 'true':null}" value="BUILD_GENERAL1_2XLARGE">2XLarge (72 vCPUs, 145 RAM, 824 Disk (SSD))</option>
     </select>
   </f:entry>
 
